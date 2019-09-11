@@ -64,7 +64,6 @@ module aes(
 
   localparam ADDR_STATUS      = 8'h09;
   localparam STATUS_READY_BIT = 0;
-  localparam STATUS_VALID_BIT = 1;
 
   localparam ADDR_CONFIG      = 8'h0a;
   localparam CTRL_ENCDEC_BIT  = 0;
@@ -104,7 +103,6 @@ module aes(
   reg          key_we;
 
   reg [127 : 0] result_reg;
-  reg           valid_reg;
   reg           ready_reg;
 
 
@@ -121,7 +119,6 @@ module aes(
   wire           core_keylen;
   wire [127 : 0] core_block;
   wire [127 : 0] core_result;
-  wire           core_valid;
 
 
   //----------------------------------------------------------------
@@ -156,8 +153,7 @@ module aes(
                 .keylen(core_keylen),
 
                 .block(core_block),
-                .result(core_result),
-                .result_valid(core_valid)
+                .result(core_result)
                );
 
 
@@ -185,13 +181,11 @@ module aes(
           keylen_reg <= 1'b0;
 
           result_reg <= 128'h0;
-          valid_reg  <= 1'b0;
           ready_reg  <= 1'b0;
         end
       else
         begin
           ready_reg  <= core_ready;
-          valid_reg  <= core_valid;
           result_reg <= core_result;
           init_reg   <= init_new;
           next_reg   <= next_new;
@@ -252,7 +246,7 @@ module aes(
                 ADDR_NAME1:   tmp_read_data = CORE_NAME1;
                 ADDR_VERSION: tmp_read_data = CORE_VERSION;
                 ADDR_CTRL:    tmp_read_data = {28'h0, keylen_reg, encdec_reg, next_reg, init_reg};
-                ADDR_STATUS:  tmp_read_data = {30'h0, valid_reg, ready_reg};
+                ADDR_STATUS:  tmp_read_data = {31'h0, ready_reg};
 
                 default:
                   begin

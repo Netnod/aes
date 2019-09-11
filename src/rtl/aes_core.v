@@ -50,11 +50,8 @@ module aes_core(
                 input wire            keylen,
 
                 input wire [127 : 0]  block,
-                output wire [127 : 0] result,
-                output wire           result_valid
+                output wire [127 : 0] result
                );
-
-
 
 
   //----------------------------------------------------------------
@@ -71,10 +68,6 @@ module aes_core(
   reg [1 : 0] aes_core_ctrl_reg;
   reg [1 : 0] aes_core_ctrl_new;
   reg         aes_core_ctrl_we;
-
-  reg         result_valid_reg;
-  reg         result_valid_new;
-  reg         result_valid_we;
 
   reg         ready_reg;
   reg         ready_new;
@@ -173,7 +166,6 @@ module aes_core(
   //----------------------------------------------------------------
   assign ready        = ready_reg;
   assign result       = muxed_new_block;
-  assign result_valid = result_valid_reg;
 
 
   //----------------------------------------------------------------
@@ -187,15 +179,11 @@ module aes_core(
     begin: reg_update
       if (!reset_n)
         begin
-          result_valid_reg  <= 1'b0;
           ready_reg         <= 1'b1;
           aes_core_ctrl_reg <= CTRL_IDLE;
         end
       else
         begin
-          if (result_valid_we)
-            result_valid_reg <= result_valid_new;
-
           if (ready_we)
             ready_reg <= ready_new;
 
@@ -266,8 +254,6 @@ module aes_core(
       init_state        = 1'b0;
       ready_new         = 1'b0;
       ready_we          = 1'b0;
-      result_valid_new  = 1'b0;
-      result_valid_we   = 1'b0;
       aes_core_ctrl_new = CTRL_IDLE;
       aes_core_ctrl_we  = 1'b0;
 
@@ -279,8 +265,6 @@ module aes_core(
                 init_state        = 1'b1;
                 ready_new         = 1'b0;
                 ready_we          = 1'b1;
-                result_valid_new  = 1'b0;
-                result_valid_we   = 1'b1;
                 aes_core_ctrl_new = CTRL_INIT;
                 aes_core_ctrl_we  = 1'b1;
               end
@@ -289,8 +273,6 @@ module aes_core(
                 init_state        = 1'b0;
                 ready_new         = 1'b0;
                 ready_we          = 1'b1;
-                result_valid_new  = 1'b0;
-                result_valid_we   = 1'b1;
                 aes_core_ctrl_new = CTRL_NEXT;
                 aes_core_ctrl_we  = 1'b1;
               end
@@ -317,8 +299,6 @@ module aes_core(
               begin
                 ready_new         = 1'b1;
                 ready_we          = 1'b1;
-                result_valid_new  = 1'b1;
-                result_valid_we   = 1'b1;
                 aes_core_ctrl_new = CTRL_IDLE;
                 aes_core_ctrl_we  = 1'b1;
              end

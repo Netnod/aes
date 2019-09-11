@@ -63,7 +63,6 @@ module tb_aes();
 
   parameter ADDR_STATUS      = 8'h09;
   parameter STATUS_READY_BIT = 0;
-  parameter STATUS_VALID_BIT = 1;
 
   parameter ADDR_CONFIG      = 8'h0a;
 

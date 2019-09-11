@@ -74,7 +74,6 @@ module tb_aes_core();
   reg            tb_keylen;
   reg [127 : 0]  tb_block;
   wire [127 : 0] tb_result;
-  wire           tb_result_valid;
 
 
   //----------------------------------------------------------------
@@ -142,8 +141,7 @@ module tb_aes_core();
       $display("block  = 0x%032x", dut.block);
       $display("");
       $display("ready        = 0x%01x", dut.ready);
-      $display("result_valid = 0x%01x, result = 0x%032x",
-               dut.result_valid, dut.result);
+      $display("result = 0x%032x", dut.result);
       $display("");
       $display("Encipher state::");
       $display("enc_ctrl = 0x%01x, round_ctr = 0x%01x",
@@ -262,25 +260,6 @@ module tb_aes_core();
         end
     end
   endtask // wait_ready
-
-
-  //----------------------------------------------------------------
-  // wait_valid()
-  //
-  // Wait for the result_valid flag in the dut to be set.
-  //
-  // Note: It is the callers responsibility to call the function
-  // when the dut is actively processing a block and will in fact
-  // at some point set the flag.
-  //----------------------------------------------------------------
-  task wait_valid;
-    begin
-      while (!tb_result_valid)
-        begin
-          #(CLK_PERIOD);
-        end
-    end
-  endtask // wait_valid
 
 
   //----------------------------------------------------------------
