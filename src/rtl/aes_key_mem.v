@@ -140,6 +140,8 @@ module aes_key_mem(
           rcon_reg         <= 8'h0;
           ready_reg        <= 1'b0;
           round_ctr_reg    <= 4'h0;
+          prev_key0_reg    <= 128'h0;
+          prev_key1_reg    <= 128'h0;
           key_mem_ctrl_reg <= CTRL_IDLE;
         end
       else
