@@ -77,8 +77,6 @@ module aes_core(
   //----------------------------------------------------------------
   // Wires.
   //----------------------------------------------------------------
-  reg            init_state;
-
   wire [127 : 0] round_key;
   wire           key_ready;
 
@@ -100,9 +98,6 @@ module aes_core(
 
   wire [31 : 0]  keymem_sboxw;
   wire [31 : 0]  new_keymem_sboxw;
-
-  reg [31 : 0]   muxed_sboxw;
-  wire [31 : 0]  new_sboxw;
 
 
   //----------------------------------------------------------------
@@ -235,7 +230,6 @@ module aes_core(
   //----------------------------------------------------------------
   always @*
     begin : aes_core_ctrl
-      init_state        = 1'b0;
       ready_new         = 1'b0;
       ready_we          = 1'b0;
       aes_core_ctrl_new = CTRL_IDLE;
@@ -246,7 +240,6 @@ module aes_core(
           begin
             if (init)
               begin
-                init_state        = 1'b1;
                 ready_new         = 1'b0;
                 ready_we          = 1'b1;
                 aes_core_ctrl_new = CTRL_INIT;
@@ -254,7 +247,6 @@ module aes_core(
               end
             else if (next)
               begin
-                init_state        = 1'b0;
                 ready_new         = 1'b0;
                 ready_we          = 1'b1;
                 aes_core_ctrl_new = CTRL_NEXT;
@@ -264,8 +256,6 @@ module aes_core(
 
         CTRL_INIT:
           begin
-            init_state = 1'b1;
-
             if (key_ready)
               begin
                 ready_new         = 1'b1;
@@ -277,8 +267,6 @@ module aes_core(
 
         CTRL_NEXT:
           begin
-            init_state = 1'b0;
-
             if (muxed_ready)
               begin
                 ready_new         = 1'b1;
