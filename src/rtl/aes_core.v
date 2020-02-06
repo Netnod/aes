@@ -87,15 +87,6 @@ module aes_core(
   wire [31 : 0]  enc_sboxw;
   wire [31 : 0]  new_enc_sboxw;
 
-  reg            dec_next;
-  wire [3 : 0]   dec_round_nr;
-  wire [127 : 0] dec_new_block;
-  wire           dec_ready;
-
-  reg [127 : 0]  muxed_new_block;
-  reg [3 : 0]    muxed_round_nr;
-  reg            muxed_ready;
-
   wire [31 : 0]  keymem_sboxw;
   wire [31 : 0]  new_keymem_sboxw;
 
@@ -107,7 +98,7 @@ module aes_core(
                                .clk(clk),
                                .reset_n(reset_n),
 
-                               .next(enc_next),
+                               .next(next),
 
                                .keylen(keylen),
                                .round(enc_round_nr),
@@ -121,23 +112,6 @@ module aes_core(
                                .ready(enc_ready)
                               );
 
-
-  aes_decipher_block dec_block(
-                               .clk(clk),
-                               .reset_n(reset_n),
-
-                               .next(dec_next),
-
-                               .keylen(keylen),
-                               .round(dec_round_nr),
-                               .round_key(round_key),
-
-                               .block(block),
-                               .new_block(dec_new_block),
-                               .ready(dec_ready)
-                              );
-
-
   aes_key_mem keymem(
                      .clk(clk),
                      .reset_n(reset_n),
@@ -146,7 +120,7 @@ module aes_core(
                      .keylen(keylen),
                      .init(init),
 
-                     .round(muxed_round_nr),
+                     .round(enc_round_nr),
                      .round_key(round_key),
                      .ready(key_ready),
 
@@ -162,8 +136,8 @@ module aes_core(
   //----------------------------------------------------------------
   // Concurrent connectivity for ports etc.
   //----------------------------------------------------------------
-  assign ready        = ready_reg;
-  assign result       = muxed_new_block;
+  assign ready  = ready_reg;
+  assign result = enc_new_block;
 
 
   //----------------------------------------------------------------
@@ -189,36 +163,6 @@ module aes_core(
             aes_core_ctrl_reg <= aes_core_ctrl_new;
         end
     end // reg_update
-
-
-  //----------------------------------------------------------------
-  // encdex_mux
-  //
-  // Controls which of the datapaths that get the next signal, have
-  // access to the memory as well as the block processing result.
-  //----------------------------------------------------------------
-  always @*
-    begin : encdec_mux
-      enc_next = 1'b0;
-      dec_next = 1'b0;
-
-      if (encdec)
-        begin
-          // Encipher operations
-          enc_next        = next;
-          muxed_round_nr  = enc_round_nr;
-          muxed_new_block = enc_new_block;
-          muxed_ready     = enc_ready;
-        end
-      else
-        begin
-          // Decipher operations
-          dec_next        = next;
-          muxed_round_nr  = dec_round_nr;
-          muxed_new_block = dec_new_block;
-          muxed_ready     = dec_ready;
-        end
-    end // encdec_mux
 
 
   //----------------------------------------------------------------
@@ -267,7 +211,7 @@ module aes_core(
 
         CTRL_NEXT:
           begin
-            if (muxed_ready)
+            if (enc_ready)
               begin
                 ready_new         = 1'b1;
                 ready_we          = 1'b1;
