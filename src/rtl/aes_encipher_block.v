@@ -155,12 +155,6 @@ module aes_encipher_block(
   //----------------------------------------------------------------
   // Registers including update variables and write enable.
   //----------------------------------------------------------------
-  reg [1 : 0]   sword_ctr_reg;
-  reg [1 : 0]   sword_ctr_new;
-  reg           sword_ctr_we;
-  reg           sword_ctr_inc;
-  reg           sword_ctr_rst;
-
   reg [3 : 0]   round_ctr_reg;
   reg [3 : 0]   round_ctr_new;
   reg           round_ctr_we;
@@ -190,7 +184,6 @@ module aes_encipher_block(
   // Wires.
   //----------------------------------------------------------------
   reg [2 : 0]  update_type;
-  reg [31 : 0] muxed_sboxw;
 
   reg [31 : 0]  enc_sboxw0;
   reg [31 : 0]  enc_sboxw1;
@@ -234,7 +227,6 @@ module aes_encipher_block(
           block_w1_reg  <= 32'h0;
           block_w2_reg  <= 32'h0;
           block_w3_reg  <= 32'h0;
-          sword_ctr_reg <= 2'h0;
           round_ctr_reg <= 4'h0;
           ready_reg     <= 1'b1;
           enc_ctrl_reg  <= CTRL_IDLE;
@@ -252,9 +244,6 @@ module aes_encipher_block(
 
           if (block_w3_we)
             block_w3_reg <= block_new[031 : 000];
-
-          if (sword_ctr_we)
-            sword_ctr_reg <= sword_ctr_new;
 
           if (round_ctr_we)
             round_ctr_reg <= round_ctr_new;
@@ -279,19 +268,25 @@ module aes_encipher_block(
       reg [127 : 0] addkey_init_block, addkey_main_block, addkey_final_block;
 
       block_new   = 128'h0;
-      muxed_sboxw = 32'h0;
       block_w0_we = 1'b0;
       block_w1_we = 1'b0;
       block_w2_we = 1'b0;
       block_w3_we = 1'b0;
 
+      enc_sboxw0 = block_w0_reg;
+      enc_sboxw1 = block_w1_reg;
+      enc_sboxw2 = block_w2_reg;
+      enc_sboxw3 = block_w3_reg;
+
       old_block          = {block_w0_reg, block_w1_reg,
                             block_w2_reg, block_w3_reg};
+
       shiftrows_block    = shiftrows(old_block);
       mixcolumns_block   = mixcolumns(shiftrows_block);
       addkey_init_block  = addroundkey(block, round_key);
       addkey_main_block  = addroundkey(mixcolumns_block, round_key);
       addkey_final_block = addroundkey(shiftrows_block, round_key);
+
 
       case (update_type)
         INIT_UPDATE:
@@ -305,11 +300,6 @@ module aes_encipher_block(
 
         SBOX_UPDATE:
           begin
-            enc_sboxw0 = block_w0_reg;
-            enc_sboxw1 = block_w1_reg;
-            enc_sboxw2 = block_w2_reg;
-            enc_sboxw3 = block_w3_reg;
-
             block_new = {new_enc_sboxw0, new_enc_sboxw1,
                          new_enc_sboxw2, new_enc_sboxw3};
 
@@ -424,7 +414,6 @@ module aes_encipher_block(
 
         CTRL_MAIN:
           begin
-            sword_ctr_rst = 1'b1;
             round_ctr_inc = 1'b1;
             if (round_ctr_reg < num_rounds)
               begin

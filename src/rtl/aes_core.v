@@ -80,7 +80,6 @@ module aes_core(
   wire [127 : 0] round_key;
   wire           key_ready;
 
-  reg            enc_next;
   wire [3 : 0]   enc_round_nr;
   wire [127 : 0] enc_new_block;
   wire           enc_ready;
