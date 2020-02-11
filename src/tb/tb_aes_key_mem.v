@@ -76,9 +76,6 @@ module tb_aes_key_mem();
   wire [127 : 0] tb_round_key;
   wire           tb_ready;
 
-  wire [31 : 0]  tb_sboxw;
-  wire [31 : 0]  tb_new_sboxw;
-
 
   //----------------------------------------------------------------
   // Device Under Test.
@@ -93,14 +90,8 @@ module tb_aes_key_mem();
 
                   .round(tb_round),
                   .round_key(tb_round_key),
-                  .ready(tb_ready),
-
-                  .sboxw(tb_sboxw),
-                  .new_sboxw(tb_new_sboxw)
+                  .ready(tb_ready)
                  );
-
-  // The DUT requirees Sboxes.
-  aes_sbox sbox(.sboxw(tb_sboxw), .new_sboxw(tb_new_sboxw));
 
 
   //----------------------------------------------------------------
@@ -165,7 +156,7 @@ module tb_aes_key_mem();
                dut.round_key_gen.w4, dut.round_key_gen.w5,
                dut.round_key_gen.w6, dut.round_key_gen.w7);
       $display("sboxw = 0x%04x, new_sboxw = 0x%04x, rconw = 0x%04x",
-               dut.sboxw, dut.new_sboxw, dut.round_key_gen.rconw);
+               dut.keymem_sboxw, dut.new_keymem_sboxw, dut.round_key_gen.rconw);
       $display("tw = 0x%04x, trw = 0x%04x", dut.round_key_gen.tw, dut.round_key_gen.trw);
       $display("key_mem_new = 0x%016x, key_mem_we = 0x%01x",
                dut.key_mem_new, dut.key_mem_we);

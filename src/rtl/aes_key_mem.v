@@ -46,11 +46,7 @@ module aes_key_mem(
 
                    input wire    [3 : 0] round,
                    output wire [127 : 0] round_key,
-                   output wire           ready,
-
-
-                   output wire [31 : 0]  sboxw,
-                   input wire  [31 : 0]  new_sboxw
+                   output wire           ready
                   );
 
 
@@ -108,9 +104,16 @@ module aes_key_mem(
   //----------------------------------------------------------------
   // Wires.
   //----------------------------------------------------------------
-  reg [31 : 0]  tmp_sboxw;
+  reg [31 : 0]  keymem_sboxw;
+  wire [31 : 0] new_keymem_sboxw;
   reg           round_key_update;
   reg [127 : 0] tmp_round_key;
+
+
+  //----------------------------------------------------------------
+  // Sbox instantiations.
+  //----------------------------------------------------------------
+  aes_sbox sbox_inst0(.sboxw(keymem_sboxw), .new_sboxw(new_keymem_sboxw));
 
 
   //----------------------------------------------------------------
@@ -118,7 +121,6 @@ module aes_key_mem(
   //----------------------------------------------------------------
   assign round_key = tmp_round_key;
   assign ready     = ready_reg;
-  assign sboxw     = tmp_sboxw;
 
 
   //----------------------------------------------------------------
@@ -221,10 +223,10 @@ module aes_key_mem(
       w7 = prev_key1_reg[031 : 000];
 
       rconw = {rcon_reg, 24'h0};
-      tmp_sboxw = w7;
-      rotstw = {new_sboxw[23 : 00], new_sboxw[31 : 24]};
+      keymem_sboxw = w7;
+      rotstw = {new_keymem_sboxw[23 : 00], new_keymem_sboxw[31 : 24]};
       trw = rotstw ^ rconw;
-      tw = new_sboxw;
+      tw = new_keymem_sboxw;
 
       // Generate the specific round keys.
       if (round_key_update)

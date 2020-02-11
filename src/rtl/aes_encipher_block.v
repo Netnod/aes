@@ -48,9 +48,6 @@ module aes_encipher_block(
                           output wire [3 : 0]   round,
                           input wire [127 : 0]  round_key,
 
-                          output wire [31 : 0]  sboxw,
-                          input wire  [31 : 0]  new_sboxw,
-
                           input wire [127 : 0]  block,
                           output wire [127 : 0] new_block,
                           output wire           ready
@@ -195,12 +192,29 @@ module aes_encipher_block(
   reg [2 : 0]  update_type;
   reg [31 : 0] muxed_sboxw;
 
+  reg [31 : 0]  enc_sboxw0;
+  reg [31 : 0]  enc_sboxw1;
+  reg [31 : 0]  enc_sboxw2;
+  reg [31 : 0]  enc_sboxw3;
+  wire [31 : 0] new_enc_sboxw0;
+  wire [31 : 0] new_enc_sboxw1;
+  wire [31 : 0] new_enc_sboxw2;
+  wire [31 : 0] new_enc_sboxw3;
+
+
+  //----------------------------------------------------------------
+  // Sbox instantiations.
+  //----------------------------------------------------------------
+  aes_sbox sbox_inst0(.sboxw(enc_sboxw0), .new_sboxw(new_enc_sboxw0));
+  aes_sbox sbox_inst1(.sboxw(enc_sboxw1), .new_sboxw(new_enc_sboxw1));
+  aes_sbox sbox_inst2(.sboxw(enc_sboxw2), .new_sboxw(new_enc_sboxw2));
+  aes_sbox sbox_inst3(.sboxw(enc_sboxw3), .new_sboxw(new_enc_sboxw3));
+
 
   //----------------------------------------------------------------
   // Concurrent connectivity for ports etc.
   //----------------------------------------------------------------
   assign round     = round_ctr_reg;
-  assign sboxw     = muxed_sboxw;
   assign new_block = {block_w0_reg, block_w1_reg, block_w2_reg, block_w3_reg};
   assign ready     = ready_reg;
 
@@ -271,7 +285,8 @@ module aes_encipher_block(
       block_w2_we = 1'b0;
       block_w3_we = 1'b0;
 
-      old_block          = {block_w0_reg, block_w1_reg, block_w2_reg, block_w3_reg};
+      old_block          = {block_w0_reg, block_w1_reg,
+                            block_w2_reg, block_w3_reg};
       shiftrows_block    = shiftrows(old_block);
       mixcolumns_block   = mixcolumns(shiftrows_block);
       addkey_init_block  = addroundkey(block, round_key);
@@ -290,33 +305,18 @@ module aes_encipher_block(
 
         SBOX_UPDATE:
           begin
-            block_new = {new_sboxw, new_sboxw, new_sboxw, new_sboxw};
+            enc_sboxw0 = block_w0_reg;
+            enc_sboxw1 = block_w1_reg;
+            enc_sboxw2 = block_w2_reg;
+            enc_sboxw3 = block_w3_reg;
 
-            case (sword_ctr_reg)
-              2'h0:
-                begin
-                  muxed_sboxw = block_w0_reg;
-                  block_w0_we = 1'b1;
-                end
+            block_new = {new_enc_sboxw0, new_enc_sboxw1,
+                         new_enc_sboxw2, new_enc_sboxw3};
 
-              2'h1:
-                begin
-                  muxed_sboxw = block_w1_reg;
-                  block_w1_we = 1'b1;
-                end
-
-              2'h2:
-                begin
-                  muxed_sboxw = block_w2_reg;
-                  block_w2_we = 1'b1;
-                end
-
-              2'h3:
-                begin
-                  muxed_sboxw = block_w3_reg;
-                  block_w3_we = 1'b1;
-                end
-            endcase // case (sbox_mux_ctrl_reg)
+            block_w0_we = 1'b1;
+            block_w1_we = 1'b1;
+            block_w2_we = 1'b1;
+            block_w3_we = 1'b1;
           end
 
         MAIN_UPDATE:
@@ -342,29 +342,6 @@ module aes_encipher_block(
           end
       endcase // case (update_type)
     end // round_logic
-
-
-  //----------------------------------------------------------------
-  // sword_ctr
-  //
-  // The subbytes word counter with reset and increase logic.
-  //----------------------------------------------------------------
-  always @*
-    begin : sword_ctr
-      sword_ctr_new = 2'h0;
-      sword_ctr_we  = 1'b0;
-
-      if (sword_ctr_rst)
-        begin
-          sword_ctr_new = 2'h0;
-          sword_ctr_we  = 1'b1;
-        end
-      else if (sword_ctr_inc)
-        begin
-          sword_ctr_new = sword_ctr_reg + 1'b1;
-          sword_ctr_we  = 1'b1;
-        end
-    end // sword_ctr
 
 
   //----------------------------------------------------------------
@@ -400,8 +377,6 @@ module aes_encipher_block(
       reg [3 : 0] num_rounds;
 
       // Default assignments.
-      sword_ctr_inc = 1'b0;
-      sword_ctr_rst = 1'b0;
       round_ctr_inc = 1'b0;
       round_ctr_rst = 1'b0;
       ready_new     = 1'b0;
@@ -435,7 +410,6 @@ module aes_encipher_block(
         CTRL_INIT:
           begin
             round_ctr_inc = 1'b1;
-            sword_ctr_rst = 1'b1;
             update_type   = INIT_UPDATE;
             enc_ctrl_new  = CTRL_SBOX;
             enc_ctrl_we   = 1'b1;
@@ -443,13 +417,9 @@ module aes_encipher_block(
 
         CTRL_SBOX:
           begin
-            sword_ctr_inc = 1'b1;
             update_type   = SBOX_UPDATE;
-            if (sword_ctr_reg == 2'h3)
-              begin
-                enc_ctrl_new  = CTRL_MAIN;
-                enc_ctrl_we   = 1'b1;
-              end
+            enc_ctrl_new  = CTRL_MAIN;
+            enc_ctrl_we   = 1'b1;
           end
 
         CTRL_MAIN:

@@ -84,11 +84,6 @@ module aes_core(
   wire [3 : 0]   enc_round_nr;
   wire [127 : 0] enc_new_block;
   wire           enc_ready;
-  wire [31 : 0]  enc_sboxw;
-  wire [31 : 0]  new_enc_sboxw;
-
-  wire [31 : 0]  keymem_sboxw;
-  wire [31 : 0]  new_keymem_sboxw;
 
 
   //----------------------------------------------------------------
@@ -103,9 +98,6 @@ module aes_core(
                                .keylen(keylen),
                                .round(enc_round_nr),
                                .round_key(round_key),
-
-                               .sboxw(enc_sboxw),
-                               .new_sboxw(new_enc_sboxw),
 
                                .block(block),
                                .new_block(enc_new_block),
@@ -122,15 +114,10 @@ module aes_core(
 
                      .round(enc_round_nr),
                      .round_key(round_key),
-                     .ready(key_ready),
-
-                     .sboxw(keymem_sboxw),
-                     .new_sboxw(new_keymem_sboxw)
+                     .ready(key_ready)
                     );
 
 
-  aes_sbox sbox_inst0(.sboxw(enc_sboxw), .new_sboxw(new_enc_sboxw));
-  aes_sbox sbox_inst1(.sboxw(keymem_sboxw), .new_sboxw(new_keymem_sboxw));
 
 
   //----------------------------------------------------------------
@@ -225,7 +212,6 @@ module aes_core(
 
           end
       endcase // case (aes_core_ctrl_reg)
-
     end // aes_core_ctrl
 endmodule // aes_core
 
