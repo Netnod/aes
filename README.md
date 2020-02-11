@@ -9,9 +9,7 @@ Encryption Standard) as specified in the NIST document [FIPS 197](http://csrc.ni
 
 This implementation supports 128 and 256 bit keys. The
 implementation is iterative and process one 128 block at a time. Blocks
-are processed on a word level with 4 S-boxes in the data path. The
-S-boxes for encryption are shared with the key expansion and the core
-can thus not do key update in parallel with block processing.
+are processed on a word level with 16 Sboxes in the data path.
 
 The encipher and decipher block processing datapaths are separated and
 basically self contained given access to a set of round keys and a
