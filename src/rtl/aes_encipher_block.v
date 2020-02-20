@@ -71,10 +71,9 @@ module aes_encipher_block(
 
   localparam CTRL_IDLE  = 3'h0;
   localparam CTRL_INIT0 = 3'h1;
-  localparam CTRL_INIT1 = 3'h2;
-  localparam CTRL_INIT  = 3'h3;
-  localparam CTRL_MAIN  = 3'h4;
-  localparam CTRL_FINAL = 3'h5;
+  localparam CTRL_INIT  = 3'h2;
+  localparam CTRL_MAIN  = 3'h3;
+  localparam CTRL_FINAL = 3'h4;
 
 
   //----------------------------------------------------------------
@@ -364,13 +363,6 @@ module aes_encipher_block(
           end
 
         CTRL_INIT0:
-          begin
-            tmp_init_key = 1'h1;
-            enc_ctrl_new = CTRL_INIT1;
-            enc_ctrl_we  = 1'b1;
-          end
-
-        CTRL_INIT1:
           begin
             tmp_next_key = 1'h1;
             enc_ctrl_new = CTRL_INIT;
