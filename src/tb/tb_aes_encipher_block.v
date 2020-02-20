@@ -70,7 +70,9 @@ module tb_aes_encipher_block();
   reg            tb_next;
   reg            tb_keylen;
   wire           tb_ready;
-  wire [3 : 0]   tb_round;
+  wire           tb_init_key;
+  wire           tb_next_key;
+  reg [3 : 0]    tb_key_ptr;
   wire [127 : 0] tb_round_key;
 
   reg [127 : 0]  tb_block;
@@ -82,7 +84,7 @@ module tb_aes_encipher_block();
   //----------------------------------------------------------------
   // Assignments.
   //----------------------------------------------------------------
-  assign tb_round_key = key_mem[tb_round];
+  assign tb_round_key = key_mem[tb_key_ptr];
 
 
   //----------------------------------------------------------------
@@ -93,10 +95,11 @@ module tb_aes_encipher_block();
                          .clk(tb_clk),
                          .reset_n(tb_reset_n),
 
+                         .keylen(tb_keylen),
                          .next(tb_next),
 
-                         .keylen(tb_keylen),
-                         .round(tb_round),
+                         .init_key(tb_init_key),
+                         .next_key(tb_next_key),
                          .round_key(tb_round_key),
 
                          .block(tb_block),
@@ -145,14 +148,13 @@ module tb_aes_encipher_block();
       $display("State of DUT");
       $display("------------");
       $display("Interfaces");
-      $display("ready = 0x%01x, next = 0x%01x, keylen = 0x%01x",
-               dut.ready, dut.next, dut.keylen);
+      $display("ready = 0x%01x, init_key = 0x%01x, next_key = 0x%01x, keylen = 0x%01x",
+               dut.ready, dut.init_key, dut.next_key, dut.keylen);
       $display("block     = 0x%032x", dut.block);
       $display("new_block = 0x%032x", dut.new_block);
       $display("");
 
       $display("Control states");
-      $display("round = 0x%01x", dut.round);
       $display("enc_ctrl = 0x%01x, update_type = 0x%01x, round_ctr = 0x%01x",
                dut.enc_ctrl_reg, dut.update_type, dut.round_ctr_reg);
       $display("");
@@ -175,6 +177,17 @@ module tb_aes_encipher_block();
     end
   endtask // dump_dut_state
 
+
+  //----------------------------------------------------------------
+  //----------------------------------------------------------------
+  always @*
+    begin
+      if (tb_init_key)
+        tb_key_ptr = 4'h0;
+
+      if (tb_next_key)
+        tb_key_ptr = tb_key_ptr + 1'h1;
+    end
 
   //----------------------------------------------------------------
   // reset_dut()
@@ -401,7 +414,7 @@ module tb_aes_encipher_block();
       $display("");
       $display("*** AES encipher block module simulation done. ***");
       $finish;
-    end // aes_core_test
+    end
 endmodule // tb_aes_encipher_block
 
 //======================================================================

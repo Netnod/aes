@@ -55,32 +55,13 @@ module aes_core(
 
 
   //----------------------------------------------------------------
-  // Internal constant and parameter definitions.
-  //----------------------------------------------------------------
-  localparam CTRL_IDLE  = 2'h0;
-  localparam CTRL_INIT  = 2'h1;
-  localparam CTRL_NEXT  = 2'h2;
-
-
-  //----------------------------------------------------------------
-  // Registers including update variables and write enable.
-  //----------------------------------------------------------------
-  reg [1 : 0] aes_core_ctrl_reg;
-  reg [1 : 0] aes_core_ctrl_new;
-  reg         aes_core_ctrl_we;
-
-  reg         ready_reg;
-  reg         ready_new;
-  reg         ready_we;
-
-
-  //----------------------------------------------------------------
   // Wires.
   //----------------------------------------------------------------
   wire [127 : 0] round_key;
   wire           key_ready;
 
-  wire [3 : 0]   enc_round_nr;
+  wire           enc_init_key;
+  wire           enc_next_key;
   wire [127 : 0] enc_new_block;
   wire           enc_ready;
 
@@ -92,10 +73,11 @@ module aes_core(
                                .clk(clk),
                                .reset_n(reset_n),
 
+                               .keylen(keylen),
                                .next(next),
 
-                               .keylen(keylen),
-                               .round(enc_round_nr),
+                               .init_key(enc_init_key),
+                               .next_key(enc_next_key),
                                .round_key(round_key),
 
                                .block(block),
@@ -109,109 +91,21 @@ module aes_core(
 
                      .key(key),
                      .keylen(keylen),
-                     .init(init),
+                     .init_key(enc_init_key),
+                     .next_key(enc_next_key),
 
-                     .round(enc_round_nr),
                      .round_key(round_key),
                      .ready(key_ready)
                     );
 
 
-
-
   //----------------------------------------------------------------
   // Concurrent connectivity for ports etc.
   //----------------------------------------------------------------
-  assign ready  = ready_reg;
+  assign ready  = enc_ready;
   assign result = enc_new_block;
 
 
-  //----------------------------------------------------------------
-  // reg_update
-  //
-  // Update functionality for all registers in the core.
-  // All registers are positive edge triggered with asynchronous
-  // active low reset. All registers have write enable.
-  //----------------------------------------------------------------
-  always @ (posedge clk or negedge reset_n)
-    begin: reg_update
-      if (!reset_n)
-        begin
-          ready_reg         <= 1'b1;
-          aes_core_ctrl_reg <= CTRL_IDLE;
-        end
-      else
-        begin
-          if (ready_we)
-            ready_reg <= ready_new;
-
-          if (aes_core_ctrl_we)
-            aes_core_ctrl_reg <= aes_core_ctrl_new;
-        end
-    end // reg_update
-
-
-  //----------------------------------------------------------------
-  // aes_core_ctrl
-  //
-  // Control FSM for aes core. Basically tracks if we are in
-  // key init, encipher or decipher modes and connects the
-  // different submodules to shared resources and interface ports.
-  //----------------------------------------------------------------
-  always @*
-    begin : aes_core_ctrl
-      ready_new         = 1'b0;
-      ready_we          = 1'b0;
-      aes_core_ctrl_new = CTRL_IDLE;
-      aes_core_ctrl_we  = 1'b0;
-
-      case (aes_core_ctrl_reg)
-        CTRL_IDLE:
-          begin
-            if (init)
-              begin
-                ready_new         = 1'b0;
-                ready_we          = 1'b1;
-                aes_core_ctrl_new = CTRL_INIT;
-                aes_core_ctrl_we  = 1'b1;
-              end
-            else if (next)
-              begin
-                ready_new         = 1'b0;
-                ready_we          = 1'b1;
-                aes_core_ctrl_new = CTRL_NEXT;
-                aes_core_ctrl_we  = 1'b1;
-              end
-          end
-
-        CTRL_INIT:
-          begin
-            if (key_ready)
-              begin
-                ready_new         = 1'b1;
-                ready_we          = 1'b1;
-                aes_core_ctrl_new = CTRL_IDLE;
-                aes_core_ctrl_we  = 1'b1;
-              end
-          end
-
-        CTRL_NEXT:
-          begin
-            if (enc_ready)
-              begin
-                ready_new         = 1'b1;
-                ready_we          = 1'b1;
-                aes_core_ctrl_new = CTRL_IDLE;
-                aes_core_ctrl_we  = 1'b1;
-             end
-          end
-
-        default:
-          begin
-
-          end
-      endcase // case (aes_core_ctrl_reg)
-    end // aes_core_ctrl
 endmodule // aes_core
 
 //======================================================================

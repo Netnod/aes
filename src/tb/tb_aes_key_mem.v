@@ -71,7 +71,8 @@ module tb_aes_key_mem();
   reg            tb_reset_n;
   reg [255 : 0]  tb_key;
   reg            tb_keylen;
-  reg            tb_init;
+  reg            tb_init_key;
+  reg            tb_next_key;
   reg [3 : 0]    tb_round;
   wire [127 : 0] tb_round_key;
   wire           tb_ready;
@@ -86,9 +87,9 @@ module tb_aes_key_mem();
 
                   .key(tb_key),
                   .keylen(tb_keylen),
-                  .init(tb_init),
+                  .init_key(tb_init_key),
+                  .next_key(tb_next_key),
 
-                  .round(tb_round),
                   .round_key(tb_round_key),
                   .ready(tb_ready)
                  );
@@ -134,15 +135,13 @@ module tb_aes_key_mem();
       $display("------------");
       $display("Inputs and outputs:");
       $display("key       = 0x%032x", dut.key);
-      $display("keylen    = 0x%01x, init = 0x%01x, ready = 0x%01x",
-               dut.keylen, dut.init, dut.ready);
-      $display("round     = 0x%02x", dut.round);
+      $display("keylen    = 0x%01x, init_key = 0x%01x, next_key = 0x%01x, ready = 0x%01x",
+               dut.keylen, dut.init_key, dut.next_key, dut.ready);
       $display("round_key = 0x%016x", dut.round_key);
       $display("");
 
       $display("Internal states:");
-      $display("key_mem_ctrl = 0x%01x, round_key_update = 0x%01x, round_ctr_reg = 0x%01x, rcon_reg = 0x%01x",
-               dut.key_mem_ctrl_reg, dut.round_key_update, dut.round_ctr_reg, dut.rcon_reg);
+      $display("round_ctr_reg = 0x%01x, rcon_reg = 0x%01x", dut.round_ctr_reg, dut.rcon_reg);
 
       $display("prev_key0_reg = 0x%016x, prev_key0_new = 0x%016x, prev_key0_we = 0x%01x",
                dut.prev_key0_reg, dut.prev_key0_new, dut.prev_key0_we);
@@ -158,8 +157,7 @@ module tb_aes_key_mem();
       $display("sboxw = 0x%04x, new_sboxw = 0x%04x, rconw = 0x%04x",
                dut.keymem_sboxw, dut.new_keymem_sboxw, dut.round_key_gen.rconw);
       $display("tw = 0x%04x, trw = 0x%04x", dut.round_key_gen.tw, dut.round_key_gen.trw);
-      $display("key_mem_new = 0x%016x, key_mem_we = 0x%01x",
-               dut.key_mem_new, dut.key_mem_we);
+      $display("round_key_new = 0x%016x, round_key_we = 0x%01x", dut.round_key_new, dut.round_key_we);
       $display("");
 
       if (SHOW_SBOX)
@@ -202,12 +200,12 @@ module tb_aes_key_mem();
       error_ctr = 0;
       tc_ctr    = 0;
 
-      tb_clk     = 0;
-      tb_reset_n = 1;
-      tb_key     = {8{32'h00000000}};
-      tb_keylen  = 0;
-      tb_init    = 0;
-      tb_round   = 4'h0;
+      tb_clk      = 0;
+      tb_reset_n  = 1;
+      tb_key      = 256'h0;
+      tb_keylen   = 0;
+      tb_init_key = 1'h0;
+      tb_next_key = 1'h0;
     end
   endtask // init_sim
 
@@ -237,20 +235,15 @@ module tb_aes_key_mem();
   // Check a given key in the dut key memory against a given
   // expected key.
   //----------------------------------------------------------------
-  task check_key(input [3 : 0] key_nr, input [127 : 0] expected);
+  task check_key(input [127 : 0] expected);
     begin
-      tb_round = key_nr;
-      #(CLK_PERIOD);
       if (tb_round_key == expected)
         begin
-          $display("** key 0x%01x matched expected round key.", key_nr);
-          $display("** Got:      0x%016x **", tb_round_key);
+          $display("** key 0x%016x matched expected round key.", tb_round_key);
         end
       else
         begin
-          $display("** Error: key 0x%01x did not match expected round key. **", key_nr);
-          $display("** Expected: 0x%016x **", expected);
-          $display("** Got:      0x%016x **", tb_round_key);
+          $display("** Error: Expected 0x%016x Got:  0x%016x**", expected, tb_round_key);
           error_ctr = error_ctr + 1;
         end
       $display("");
@@ -264,7 +257,7 @@ module tb_aes_key_mem();
   // Test 128 bit keys. Due to array problems, the result check
   // is fairly ugly.
   //----------------------------------------------------------------
-  task test_key_128(input [255 : 0] key,
+  task test_key_128(input [127 : 0] key,
                     input [127 : 0] expected00,
                     input [127 : 0] expected01,
                     input [127 : 0] expected02,
@@ -278,27 +271,69 @@ module tb_aes_key_mem();
                     input [127 : 0] expected10
                    );
     begin
-      $display("** Testing with 128-bit key 0x%16x", key[255 : 128]);
+      $display("** Testing with 128-bit key 0x%16x", key);
       $display("");
 
-      tb_key = key;
+      tb_key    = {key, 128'h0};
       tb_keylen = AES_128_BIT_KEY;
-      tb_init = 1;
-      #(2 * CLK_PERIOD);
-      tb_init = 0;
-      wait_ready();
+      tb_init_key = 1'h1;
+      #(1 * CLK_PERIOD);
+      tb_init_key = 1'h0;
 
-      check_key(4'h0, expected00);
-      check_key(4'h1, expected01);
-      check_key(4'h2, expected02);
-      check_key(4'h3, expected03);
-      check_key(4'h4, expected04);
-      check_key(4'h5, expected05);
-      check_key(4'h6, expected06);
-      check_key(4'h7, expected07);
-      check_key(4'h8, expected08);
-      check_key(4'h9, expected09);
-      check_key(4'ha, expected10);
+      tb_next_key = 1'h1;
+      #(CLK_PERIOD);
+      tb_next_key = 1'h0;
+      check_key(expected00);
+
+      tb_next_key = 1'h1;
+      #(CLK_PERIOD);
+      tb_next_key = 1'h0;
+      check_key(expected01);
+
+      tb_next_key = 1'h1;
+      #(CLK_PERIOD);
+      tb_next_key = 1'h0;
+      check_key(expected02);
+
+      tb_next_key = 1'h1;
+      #(CLK_PERIOD);
+      tb_next_key = 1'h0;
+      check_key(expected03);
+
+      tb_next_key = 1'h1;
+      #(CLK_PERIOD);
+      tb_next_key = 1'h0;
+      check_key(expected04);
+
+      tb_next_key = 1'h1;
+      #(CLK_PERIOD);
+      tb_next_key = 1'h0;
+      check_key(expected05);
+
+      tb_next_key = 1'h1;
+      #(CLK_PERIOD);
+      tb_next_key = 1'h0;
+      check_key(expected06);
+
+      tb_next_key = 1'h1;
+      #(CLK_PERIOD);
+      tb_next_key = 1'h0;
+      check_key(expected07);
+
+      tb_next_key = 1'h1;
+      #(CLK_PERIOD);
+      tb_next_key = 1'h0;
+      check_key(expected08);
+
+      tb_next_key = 1'h1;
+      #(CLK_PERIOD);
+      tb_next_key = 1'h0;
+      check_key(expected09);
+
+      tb_next_key = 1'h1;
+      #(CLK_PERIOD);
+      tb_next_key = 1'h0;
+      check_key(expected10);
 
       tc_ctr = tc_ctr + 1;
     end
@@ -334,27 +369,86 @@ module tb_aes_key_mem();
 
       tb_key = key;
       tb_keylen = AES_256_BIT_KEY;
-      tb_init = 1;
-      #(2 * CLK_PERIOD);
-      tb_init = 0;
+      tb_init_key = 1'h1;
+      #(1 * CLK_PERIOD);
+      tb_init_key = 1'h0;
 
       wait_ready();
 
-      check_key(4'h0, expected00);
-      check_key(4'h1, expected01);
-      check_key(4'h2, expected02);
-      check_key(4'h3, expected03);
-      check_key(4'h4, expected04);
-      check_key(4'h5, expected05);
-      check_key(4'h6, expected06);
-      check_key(4'h7, expected07);
-      check_key(4'h8, expected08);
-      check_key(4'h9, expected09);
-      check_key(4'ha, expected10);
-      check_key(4'hb, expected11);
-      check_key(4'hc, expected12);
-      check_key(4'hd, expected13);
-      check_key(4'he, expected14);
+      tb_next_key = 1'h1;
+      #(CLK_PERIOD);
+      tb_next_key = 1'h0;
+      check_key(expected00);
+
+      tb_next_key = 1'h1;
+      #(CLK_PERIOD);
+      tb_next_key = 1'h0;
+      check_key(expected01);
+
+      tb_next_key = 1'h1;
+      #(CLK_PERIOD);
+      tb_next_key = 1'h0;
+      check_key(expected02);
+
+      tb_next_key = 1'h1;
+      #(CLK_PERIOD);
+      tb_next_key = 1'h0;
+      check_key(expected03);
+
+      tb_next_key = 1'h1;
+      #(CLK_PERIOD);
+      tb_next_key = 1'h0;
+      check_key(expected04);
+
+      tb_next_key = 1'h1;
+      #(CLK_PERIOD);
+      tb_next_key = 1'h0;
+      check_key(expected05);
+
+      tb_next_key = 1'h1;
+      #(CLK_PERIOD);
+      tb_next_key = 1'h0;
+      check_key(expected06);
+
+      tb_next_key = 1'h1;
+      #(CLK_PERIOD);
+      tb_next_key = 1'h0;
+      check_key(expected07);
+
+      tb_next_key = 1'h1;
+      #(CLK_PERIOD);
+      tb_next_key = 1'h0;
+      check_key(expected08);
+
+      tb_next_key = 1'h1;
+      #(CLK_PERIOD);
+      tb_next_key = 1'h0;
+      check_key(expected09);
+
+      tb_next_key = 1'h1;
+      #(CLK_PERIOD);
+      tb_next_key = 1'h0;
+      check_key(expected10);
+
+      tb_next_key = 1'h1;
+      #(CLK_PERIOD);
+      tb_next_key = 1'h0;
+      check_key(expected11);
+
+      tb_next_key = 1'h1;
+      #(CLK_PERIOD);
+      tb_next_key = 1'h0;
+      check_key(expected12);
+
+      tb_next_key = 1'h1;
+      #(CLK_PERIOD);
+      tb_next_key = 1'h0;
+      check_key(expected13);
+
+      tb_next_key = 1'h1;
+      #(CLK_PERIOD);
+      tb_next_key = 1'h0;
+      check_key(expected14);
 
       tc_ctr = tc_ctr + 1;
     end
@@ -425,10 +519,10 @@ module tb_aes_key_mem();
       dump_dut_state();
       $display("");
 
-      #(100 *CLK_PERIOD);
+      #(10 * CLK_PERIOD);
 
       // AES-128 test case 1 key and expected values.
-      key128_0    = 256'h0000000000000000000000000000000000000000000000000000000000000000;
+      key128_0    = 128'h00000000000000000000000000000000;
       expected_00 = 128'h00000000000000000000000000000000;
       expected_01 = 128'h62636363626363636263636362636363;
       expected_02 = 128'h9b9898c9f9fbfbaa9b9898c9f9fbfbaa;
@@ -448,7 +542,7 @@ module tb_aes_key_mem();
 
 
       // AES-128 test case 2 key and expected values.
-      key128_1    = 256'hffffffffffffffffffffffffffffffff00000000000000000000000000000000;
+      key128_1    = 128'hffffffffffffffffffffffffffffffff;
       expected_00 = 128'hffffffffffffffffffffffffffffffff;
       expected_01 = 128'he8e9e9e917161616e8e9e9e917161616;
       expected_02 = 128'hadaeae19bab8b80f525151e6454747f0;
@@ -468,7 +562,7 @@ module tb_aes_key_mem();
 
 
       // AES-128 test case 3 key and expected values.
-      key128_2    = 256'h000102030405060708090a0b0c0d0e0f00000000000000000000000000000000;
+      key128_2    = 128'h000102030405060708090a0b0c0d0e0f;
       expected_00 = 128'h000102030405060708090a0b0c0d0e0f;
       expected_01 = 128'hd6aa74fdd2af72fadaa678f1d6ab76fe;
       expected_02 = 128'hb692cf0b643dbdf1be9bc5006830b3fe;
@@ -488,7 +582,7 @@ module tb_aes_key_mem();
 
 
       // AES-128 test case 4 key and expected values.
-      key128_3    = 256'h6920e299a5202a6d656e636869746f2a00000000000000000000000000000000;
+      key128_3    = 128'h6920e299a5202a6d656e636869746f2a;
       expected_00 = 128'h6920e299a5202a6d656e636869746f2a;
       expected_01 = 128'hfa8807605fa82d0d3ac64e6553b2214f;
       expected_02 = 128'hcf75838d90ddae80aa1be0e5f9a9c1aa;
@@ -508,7 +602,7 @@ module tb_aes_key_mem();
 
 
       // NIST AES-128 test case.
-      nist_key128 = 256'h2b7e151628aed2a6abf7158809cf4f3c00000000000000000000000000000000;
+      nist_key128 = 128'h2b7e151628aed2a6abf7158809cf4f3c;
       expected_00 = 128'h2b7e151628aed2a6abf7158809cf4f3c;
       expected_01 = 128'ha0fafe1788542cb123a339392a6c7605;
       expected_02 = 128'hf2c295f27a96b9435935807a7359f67f;

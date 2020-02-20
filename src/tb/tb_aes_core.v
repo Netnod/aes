@@ -64,6 +64,7 @@ module tb_aes_core();
   reg [31 : 0] error_ctr;
   reg [31 : 0] tc_ctr;
 
+  reg            tb_debug;
   reg            tb_clk;
   reg            tb_reset_n;
   reg            tb_encdec;
@@ -118,7 +119,7 @@ module tb_aes_core();
     begin : sys_monitor
       cycle_ctr = cycle_ctr + 1;
       #(CLK_PERIOD);
-      if (DEBUG)
+      if (tb_debug)
         begin
           dump_dut_state();
         end
@@ -140,43 +141,17 @@ module tb_aes_core();
       $display("keylen = 0x%01x, key  = 0x%032x ", dut.keylen, dut.key);
       $display("block  = 0x%032x", dut.block);
       $display("");
-      $display("ready        = 0x%01x", dut.ready);
+      $display("ready  = 0x%01x", dut.ready);
       $display("result = 0x%032x", dut.result);
       $display("");
       $display("Encipher state::");
+      $display("init_key = 0x%01x, next_key = 0x%01x round_key = 0x%016x",
+               dut.enc_block.init_key, dut.enc_block.next_key, dut.enc_block.round_key);
       $display("enc_ctrl = 0x%01x, round_ctr = 0x%01x",
                dut.enc_block.enc_ctrl_reg, dut.enc_block.round_ctr_reg);
       $display("");
     end
   endtask // dump_dut_state
-
-
-  //----------------------------------------------------------------
-  // dump_keys()
-  //
-  // Dump the keys in the key memory of the dut.
-  //----------------------------------------------------------------
-  task dump_keys;
-    begin
-      $display("State of key memory in DUT:");
-      $display("key[00] = 0x%016x", dut.keymem.key_mem[00]);
-      $display("key[01] = 0x%016x", dut.keymem.key_mem[01]);
-      $display("key[02] = 0x%016x", dut.keymem.key_mem[02]);
-      $display("key[03] = 0x%016x", dut.keymem.key_mem[03]);
-      $display("key[04] = 0x%016x", dut.keymem.key_mem[04]);
-      $display("key[05] = 0x%016x", dut.keymem.key_mem[05]);
-      $display("key[06] = 0x%016x", dut.keymem.key_mem[06]);
-      $display("key[07] = 0x%016x", dut.keymem.key_mem[07]);
-      $display("key[08] = 0x%016x", dut.keymem.key_mem[08]);
-      $display("key[09] = 0x%016x", dut.keymem.key_mem[09]);
-      $display("key[10] = 0x%016x", dut.keymem.key_mem[10]);
-      $display("key[11] = 0x%016x", dut.keymem.key_mem[11]);
-      $display("key[12] = 0x%016x", dut.keymem.key_mem[12]);
-      $display("key[13] = 0x%016x", dut.keymem.key_mem[13]);
-      $display("key[14] = 0x%016x", dut.keymem.key_mem[14]);
-      $display("");
-    end
-  endtask // dump_keys
 
 
   //----------------------------------------------------------------
@@ -206,6 +181,7 @@ module tb_aes_core();
       error_ctr = 0;
       tc_ctr    = 0;
 
+      tb_debug   = 0;
       tb_clk     = 0;
       tb_reset_n = 1;
       tb_encdec  = 0;
@@ -277,6 +253,8 @@ module tb_aes_core();
      $display("*** TC %0d ECB mode test started.", tc_number);
      tc_ctr = tc_ctr + 1;
 
+//     tb_debug = 1;
+
      // Init the cipher with the given key and length.
      tb_key = key;
      tb_keylen = key_length;
@@ -284,12 +262,6 @@ module tb_aes_core();
      #(2 * CLK_PERIOD);
      tb_init = 0;
      wait_ready();
-
-     $display("Key expansion done");
-     $display("");
-
-     dump_keys();
-
 
      // Perform encipher och decipher operation on the block.
      tb_encdec = encdec;
@@ -313,6 +285,9 @@ module tb_aes_core();
 
          error_ctr = error_ctr + 1;
        end
+
+     tb_debug = 0;
+
    end
   endtask // ecb_mode_single_block_test
 
@@ -378,14 +353,14 @@ module tb_aes_core();
       ecb_mode_single_block_test(8'h01, AES_ENCIPHER, nist_aes128_key, AES_128_BIT_KEY,
                                  nist_plaintext0, nist_ecb_128_enc_expected0);
 
-     ecb_mode_single_block_test(8'h02, AES_ENCIPHER, nist_aes128_key, AES_128_BIT_KEY,
-                                nist_plaintext1, nist_ecb_128_enc_expected1);
+      ecb_mode_single_block_test(8'h02, AES_ENCIPHER, nist_aes128_key, AES_128_BIT_KEY,
+                                 nist_plaintext1, nist_ecb_128_enc_expected1);
 
-     ecb_mode_single_block_test(8'h03, AES_ENCIPHER, nist_aes128_key, AES_128_BIT_KEY,
-                                nist_plaintext2, nist_ecb_128_enc_expected2);
+      ecb_mode_single_block_test(8'h03, AES_ENCIPHER, nist_aes128_key, AES_128_BIT_KEY,
+                                 nist_plaintext2, nist_ecb_128_enc_expected2);
 
-     ecb_mode_single_block_test(8'h04, AES_ENCIPHER, nist_aes128_key, AES_128_BIT_KEY,
-                                nist_plaintext3, nist_ecb_128_enc_expected3);
+      ecb_mode_single_block_test(8'h04, AES_ENCIPHER, nist_aes128_key, AES_128_BIT_KEY,
+                                 nist_plaintext3, nist_ecb_128_enc_expected3);
 
       $display("");
       $display("ECB 256 bit key tests");
