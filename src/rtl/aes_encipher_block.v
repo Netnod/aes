@@ -65,15 +65,13 @@ module aes_encipher_block(
 
   localparam NO_UPDATE    = 3'h0;
   localparam INIT_UPDATE  = 3'h1;
-  localparam SBOX_UPDATE  = 3'h2;
-  localparam MAIN_UPDATE  = 3'h3;
-  localparam FINAL_UPDATE = 3'h4;
+  localparam MAIN_UPDATE  = 3'h2;
+  localparam FINAL_UPDATE = 3'h3;
 
   localparam CTRL_IDLE  = 3'h0;
   localparam CTRL_INIT  = 3'h1;
-  localparam CTRL_SBOX  = 3'h2;
-  localparam CTRL_MAIN  = 3'h3;
-  localparam CTRL_FINAL = 3'h4;
+  localparam CTRL_MAIN  = 3'h2;
+  localparam CTRL_FINAL = 3'h3;
 
 
   //----------------------------------------------------------------
@@ -166,10 +164,7 @@ module aes_encipher_block(
   reg [31 : 0]  block_w1_reg;
   reg [31 : 0]  block_w2_reg;
   reg [31 : 0]  block_w3_reg;
-  reg           block_w0_we;
-  reg           block_w1_we;
-  reg           block_w2_we;
-  reg           block_w3_we;
+  reg           block_we;
 
   reg           ready_reg;
   reg           ready_new;
@@ -185,23 +180,19 @@ module aes_encipher_block(
   //----------------------------------------------------------------
   reg [2 : 0]  update_type;
 
-  reg [31 : 0]  enc_sboxw0;
-  reg [31 : 0]  enc_sboxw1;
-  reg [31 : 0]  enc_sboxw2;
-  reg [31 : 0]  enc_sboxw3;
-  wire [31 : 0] new_enc_sboxw0;
-  wire [31 : 0] new_enc_sboxw1;
-  wire [31 : 0] new_enc_sboxw2;
-  wire [31 : 0] new_enc_sboxw3;
+  wire [31 : 0] new_sboxw0;
+  wire [31 : 0] new_sboxw1;
+  wire [31 : 0] new_sboxw2;
+  wire [31 : 0] new_sboxw3;
 
 
   //----------------------------------------------------------------
   // Sbox instantiations.
   //----------------------------------------------------------------
-  aes_sbox sbox_inst0(.sboxw(enc_sboxw0), .new_sboxw(new_enc_sboxw0));
-  aes_sbox sbox_inst1(.sboxw(enc_sboxw1), .new_sboxw(new_enc_sboxw1));
-  aes_sbox sbox_inst2(.sboxw(enc_sboxw2), .new_sboxw(new_enc_sboxw2));
-  aes_sbox sbox_inst3(.sboxw(enc_sboxw3), .new_sboxw(new_enc_sboxw3));
+  aes_sbox sbox_inst0(.sboxw(block_w0_reg), .new_sboxw(new_sboxw0));
+  aes_sbox sbox_inst1(.sboxw(block_w1_reg), .new_sboxw(new_sboxw1));
+  aes_sbox sbox_inst2(.sboxw(block_w2_reg), .new_sboxw(new_sboxw2));
+  aes_sbox sbox_inst3(.sboxw(block_w3_reg), .new_sboxw(new_sboxw3));
 
 
   //----------------------------------------------------------------
@@ -233,17 +224,13 @@ module aes_encipher_block(
         end
       else
         begin
-          if (block_w0_we)
-            block_w0_reg <= block_new[127 : 096];
-
-          if (block_w1_we)
-            block_w1_reg <= block_new[095 : 064];
-
-          if (block_w2_we)
-            block_w2_reg <= block_new[063 : 032];
-
-          if (block_w3_we)
-            block_w3_reg <= block_new[031 : 000];
+          if (block_we)
+            begin
+              block_w0_reg <= block_new[127 : 096];
+              block_w1_reg <= block_new[095 : 064];
+              block_w2_reg <= block_new[063 : 032];
+              block_w3_reg <= block_new[031 : 000];
+            end
 
           if (round_ctr_we)
             round_ctr_reg <= round_ctr_new;
@@ -264,24 +251,14 @@ module aes_encipher_block(
   //----------------------------------------------------------------
   always @*
     begin : round_logic
-      reg [127 : 0] old_block, shiftrows_block, mixcolumns_block;
+      reg [127 : 0] subbytes_block, shiftrows_block, mixcolumns_block;
       reg [127 : 0] addkey_init_block, addkey_main_block, addkey_final_block;
 
-      block_new   = 128'h0;
-      block_w0_we = 1'b0;
-      block_w1_we = 1'b0;
-      block_w2_we = 1'b0;
-      block_w3_we = 1'b0;
+      block_new = 128'h0;
+      block_we  = 1'h0;
 
-      enc_sboxw0 = block_w0_reg;
-      enc_sboxw1 = block_w1_reg;
-      enc_sboxw2 = block_w2_reg;
-      enc_sboxw3 = block_w3_reg;
-
-      old_block          = {block_w0_reg, block_w1_reg,
-                            block_w2_reg, block_w3_reg};
-
-      shiftrows_block    = shiftrows(old_block);
+      subbytes_block     = {new_sboxw0, new_sboxw1, new_sboxw2, new_sboxw3};
+      shiftrows_block    = shiftrows(subbytes_block);
       mixcolumns_block   = mixcolumns(shiftrows_block);
       addkey_init_block  = addroundkey(block, round_key);
       addkey_main_block  = addroundkey(mixcolumns_block, round_key);
@@ -291,40 +268,20 @@ module aes_encipher_block(
       case (update_type)
         INIT_UPDATE:
           begin
-            block_new    = addkey_init_block;
-            block_w0_we  = 1'b1;
-            block_w1_we  = 1'b1;
-            block_w2_we  = 1'b1;
-            block_w3_we  = 1'b1;
-          end
-
-        SBOX_UPDATE:
-          begin
-            block_new = {new_enc_sboxw0, new_enc_sboxw1,
-                         new_enc_sboxw2, new_enc_sboxw3};
-
-            block_w0_we = 1'b1;
-            block_w1_we = 1'b1;
-            block_w2_we = 1'b1;
-            block_w3_we = 1'b1;
+            block_new = addkey_init_block;
+            block_we  = 1'h1;
           end
 
         MAIN_UPDATE:
           begin
-            block_new    = addkey_main_block;
-            block_w0_we  = 1'b1;
-            block_w1_we  = 1'b1;
-            block_w2_we  = 1'b1;
-            block_w3_we  = 1'b1;
+            block_new = addkey_main_block;
+            block_we  = 1'h1;
           end
 
         FINAL_UPDATE:
           begin
-            block_new    = addkey_final_block;
-            block_w0_we  = 1'b1;
-            block_w1_we  = 1'b1;
-            block_w2_we  = 1'b1;
-            block_w3_we  = 1'b1;
+            block_new = addkey_final_block;
+            block_we  = 1'h1;
           end
 
         default:
@@ -401,13 +358,6 @@ module aes_encipher_block(
           begin
             round_ctr_inc = 1'b1;
             update_type   = INIT_UPDATE;
-            enc_ctrl_new  = CTRL_SBOX;
-            enc_ctrl_we   = 1'b1;
-          end
-
-        CTRL_SBOX:
-          begin
-            update_type   = SBOX_UPDATE;
             enc_ctrl_new  = CTRL_MAIN;
             enc_ctrl_we   = 1'b1;
           end
@@ -415,13 +365,9 @@ module aes_encipher_block(
         CTRL_MAIN:
           begin
             round_ctr_inc = 1'b1;
-            if (round_ctr_reg < num_rounds)
-              begin
-                update_type   = MAIN_UPDATE;
-                enc_ctrl_new  = CTRL_SBOX;
-                enc_ctrl_we   = 1'b1;
-              end
-            else
+            update_type   = MAIN_UPDATE;
+
+            if (round_ctr_reg == num_rounds)
               begin
                 update_type  = FINAL_UPDATE;
                 ready_new    = 1'b1;

@@ -141,6 +141,7 @@ module tb_aes_encipher_block();
   //----------------------------------------------------------------
   task dump_dut_state;
     begin
+      $display("Cycle: %08d", cycle_ctr);
       $display("State of DUT");
       $display("------------");
       $display("Interfaces");
@@ -161,7 +162,7 @@ module tb_aes_encipher_block();
       $display("block_w0_reg = 0x%08x, block_w1_reg = 0x%08x, block_w2_reg = 0x%08x, block_w3_reg = 0x%08x",
                dut.block_w0_reg, dut.block_w1_reg, dut.block_w2_reg, dut.block_w3_reg);
       $display("");
-      $display("old_block          = 0x%08x", dut.round_logic.old_block);
+      $display("subbytes_block     = 0x%08x", dut.round_logic.subbytes_block);
       $display("shiftrows_block    = 0x%08x", dut.round_logic.shiftrows_block);
       $display("mixcolumns_block   = 0x%08x", dut.round_logic.mixcolumns_block);
       $display("addkey_init_block  = 0x%08x", dut.round_logic.addkey_init_block);
@@ -394,6 +395,7 @@ module tb_aes_encipher_block();
       test_ecb_enc(AES_256_BIT_KEY, nist_plaintext2, nist_ecb_256_enc_expected2);
       test_ecb_enc(AES_256_BIT_KEY, nist_plaintext3, nist_ecb_256_enc_expected3);
 
+      dump_dut_state();
 
       display_test_result();
       $display("");
