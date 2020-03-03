@@ -56,7 +56,6 @@ module tb_aes();
   parameter ADDR_VERSION     = 8'h02;
 
   parameter ADDR_CTRL        = 8'h08;
-  parameter CTRL_INIT_BIT    = 0;
   parameter CTRL_NEXT_BIT    = 1;
   parameter CTRL_ENCDEC_BIT  = 2;
   parameter CTRL_KEYLEN_BIT  = 3;
@@ -166,8 +165,8 @@ module tb_aes();
       $display("cycle: 0x%016x", cycle_ctr);
       $display("State of DUT");
       $display("------------");
-      $display("ctrl_reg:   init   = 0x%01x, next   = 0x%01x", dut.init_reg, dut.next_reg);
-      $display("config_reg: encdec = 0x%01x, length = 0x%01x ", dut.encdec_reg, dut.keylen_reg);
+      $display("ctrl_reg:   next   = 0x%01x", dut.next_reg);
+      $display("config_reg: length = 0x%01x ", dut.keylen_reg);
       $display("");
 
       $display("block: 0x%08x, 0x%08x, 0x%08x, 0x%08x",

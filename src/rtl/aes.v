@@ -59,7 +59,6 @@ module aes(
   localparam ADDR_VERSION     = 8'h02;
 
   localparam ADDR_CTRL        = 8'h08;
-  localparam CTRL_INIT_BIT    = 0;
   localparam CTRL_NEXT_BIT    = 1;
 
   localparam ADDR_STATUS      = 8'h09;
@@ -86,13 +85,9 @@ module aes(
   //----------------------------------------------------------------
   // Registers including update variables and write enable.
   //----------------------------------------------------------------
-  reg init_reg;
-  reg init_new;
-
   reg next_reg;
   reg next_new;
 
-  reg encdec_reg;
   reg keylen_reg;
   reg config_we;
 
@@ -111,8 +106,6 @@ module aes(
   //----------------------------------------------------------------
   reg [31 : 0]   tmp_read_data;
 
-  wire           core_encdec;
-  wire           core_init;
   wire           core_next;
   wire           core_ready;
   wire [255 : 0] core_key;
@@ -131,9 +124,7 @@ module aes(
 
   assign core_block  = {block_reg[0], block_reg[1],
                         block_reg[2], block_reg[3]};
-  assign core_init   = init_reg;
   assign core_next   = next_reg;
-  assign core_encdec = encdec_reg;
   assign core_keylen = keylen_reg;
 
 
@@ -144,8 +135,6 @@ module aes(
                 .clk(clk),
                 .reset_n(reset_n),
 
-                .encdec(core_encdec),
-                .init(core_init),
                 .next(core_next),
                 .ready(core_ready),
 
@@ -175,9 +164,7 @@ module aes(
           for (i = 0 ; i < 8 ; i = i + 1)
             key_reg[i] <= 32'h0;
 
-          init_reg   <= 1'b0;
           next_reg   <= 1'b0;
-          encdec_reg <= 1'b0;
           keylen_reg <= 1'b0;
 
           result_reg <= 128'h0;
@@ -187,12 +174,10 @@ module aes(
         begin
           ready_reg  <= core_ready;
           result_reg <= core_result;
-          init_reg   <= init_new;
           next_reg   <= next_new;
 
           if (config_we)
             begin
-              encdec_reg <= write_data[CTRL_ENCDEC_BIT];
               keylen_reg <= write_data[CTRL_KEYLEN_BIT];
             end
 
@@ -212,7 +197,6 @@ module aes(
   //----------------------------------------------------------------
   always @*
     begin : api
-      init_new      = 1'b0;
       next_new      = 1'b0;
       config_we     = 1'b0;
       key_we        = 1'b0;
@@ -225,7 +209,6 @@ module aes(
             begin
               if (address == ADDR_CTRL)
                 begin
-                  init_new = write_data[CTRL_INIT_BIT];
                   next_new = write_data[CTRL_NEXT_BIT];
                 end
 
@@ -245,7 +228,7 @@ module aes(
                 ADDR_NAME0:   tmp_read_data = CORE_NAME0;
                 ADDR_NAME1:   tmp_read_data = CORE_NAME1;
                 ADDR_VERSION: tmp_read_data = CORE_VERSION;
-                ADDR_CTRL:    tmp_read_data = {28'h0, keylen_reg, encdec_reg, next_reg, init_reg};
+                ADDR_CONFIG:  tmp_read_data = {31'h0, keylen_reg};
                 ADDR_STATUS:  tmp_read_data = {31'h0, ready_reg};
 
                 default:

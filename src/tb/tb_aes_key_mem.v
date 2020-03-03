@@ -90,8 +90,7 @@ module tb_aes_key_mem();
                   .init_key(tb_init_key),
                   .next_key(tb_next_key),
 
-                  .round_key(tb_round_key),
-                  .ready(tb_ready)
+                  .round_key(tb_round_key)
                  );
 
 
@@ -135,8 +134,8 @@ module tb_aes_key_mem();
       $display("------------");
       $display("Inputs and outputs:");
       $display("key       = 0x%032x", dut.key);
-      $display("keylen    = 0x%01x, init_key = 0x%01x, next_key = 0x%01x, ready = 0x%01x",
-               dut.keylen, dut.init_key, dut.next_key, dut.ready);
+      $display("keylen    = 0x%01x, init_key = 0x%01x, next_key = 0x%01x",
+               dut.keylen, dut.init_key, dut.next_key);
       $display("round_key = 0x%016x", dut.round_key);
       $display("");
 
@@ -155,7 +154,7 @@ module tb_aes_key_mem();
                dut.round_key_gen.w4, dut.round_key_gen.w5,
                dut.round_key_gen.w6, dut.round_key_gen.w7);
       $display("sboxw = 0x%04x, new_sboxw = 0x%04x, rconw = 0x%04x",
-               dut.keymem_sboxw, dut.new_keymem_sboxw, dut.round_key_gen.rconw);
+               dut.round_key_gen.w7, dut.round_key_gen.new_sboxw, dut.round_key_gen.rconw);
       $display("tw = 0x%04x, trw = 0x%04x", dut.round_key_gen.tw, dut.round_key_gen.trw);
       $display("round_key_new = 0x%016x, round_key_we = 0x%01x", dut.round_key_new, dut.round_key_we);
       $display("");
@@ -221,10 +220,7 @@ module tb_aes_key_mem();
   //----------------------------------------------------------------
   task wait_ready;
     begin
-      while (!tb_ready)
-        begin
-          #(CLK_PERIOD);
-        end
+      #(CLK_PERIOD);
     end
   endtask // wait_ready
 

@@ -41,8 +41,6 @@ module aes_core(
                 input wire            clk,
                 input wire            reset_n,
 
-                input wire            encdec,
-                input wire            init,
                 input wire            next,
                 output wire           ready,
 
@@ -58,8 +56,6 @@ module aes_core(
   // Wires.
   //----------------------------------------------------------------
   wire [127 : 0] round_key;
-  wire           key_ready;
-
   wire           enc_init_key;
   wire           enc_next_key;
   wire [127 : 0] enc_new_block;
@@ -94,8 +90,7 @@ module aes_core(
                      .init_key(enc_init_key),
                      .next_key(enc_next_key),
 
-                     .round_key(round_key),
-                     .ready(key_ready)
+                     .round_key(round_key)
                     );
 
 

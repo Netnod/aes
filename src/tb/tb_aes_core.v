@@ -84,8 +84,6 @@ module tb_aes_core();
                .clk(tb_clk),
                .reset_n(tb_reset_n),
 
-               .encdec(tb_encdec),
-               .init(tb_init),
                .next(tb_next),
                .ready(tb_ready),
 
@@ -136,8 +134,7 @@ module tb_aes_core();
       $display("State of DUT");
       $display("------------");
       $display("Inputs and outputs:");
-      $display("encdec = 0x%01x, init = 0x%01x, next = 0x%01x",
-               dut.encdec, dut.init, dut.next);
+      $display("next = 0x%01x", dut.next);
       $display("keylen = 0x%01x, key  = 0x%032x ", dut.keylen, dut.key);
       $display("block  = 0x%032x", dut.block);
       $display("");
@@ -185,7 +182,6 @@ module tb_aes_core();
       tb_clk     = 0;
       tb_reset_n = 1;
       tb_encdec  = 0;
-      tb_init    = 0;
       tb_next    = 0;
       tb_key     = {8{32'h00000000}};
       tb_keylen  = 0;
@@ -255,16 +251,9 @@ module tb_aes_core();
 
 //     tb_debug = 1;
 
-     // Init the cipher with the given key and length.
-     tb_key = key;
+     // Perform encipher operation on the block.
+     tb_key    = key;
      tb_keylen = key_length;
-     tb_init = 1;
-     #(2 * CLK_PERIOD);
-     tb_init = 0;
-     wait_ready();
-
-     // Perform encipher och decipher operation on the block.
-     tb_encdec = encdec;
      tb_block = block;
      tb_next = 1;
      #(2 * CLK_PERIOD);
@@ -287,7 +276,6 @@ module tb_aes_core();
        end
 
      tb_debug = 0;
-
    end
   endtask // ecb_mode_single_block_test
 
